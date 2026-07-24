@@ -543,7 +543,7 @@
   <h2>Equipment Procurement — Installing the Tools</h2>
 
   <p>
-    Before any operation can be launched, the equipment must be sourced. This mission requires three pieces of kit: the <em>Hugging Face CLI</em> to pull the model, <em>llama.cpp</em> to run raw inference, and <em>Ollama</em> to serve it with an API that GitHub Copilot can talk to. Install them in this order.
+    Before any operation can be launched, the equipment must be sourced. This mission requires four pieces of kit: the <em>Hugging Face CLI</em> to pull the model, <em>llama.cpp</em> to run raw inference, <em>Ollama</em> to serve it with an API that GitHub Copilot can talk to, and <em>VS Code with the GitHub Copilot extension</em> to run the Specr agent manifest. Install them in this order.
   </p>
 
   <h3>1. Hugging Face CLI</h3>
@@ -595,17 +595,18 @@ cmake --build build --config Release -j$(sysctl -n hw.logicalcpu)</code></pre>
   <h3>3. Ollama</h3>
 
   <p>
-    Ollama wraps llama.cpp inference behind a clean REST API and model registry, which is how GitHub Copilot discovers and invokes local models. Install it with Homebrew — the simplest path on macOS:
+    Ollama wraps llama.cpp inference behind a clean REST API and model registry, which is how GitHub Copilot discovers and invokes local models. The recommended install is the desktop app, which ships a menu-bar daemon alongside the CLI and handles auto-start on login for you.
   </p>
+
+  <p>Download the macOS app from <code>ollama.com/download</code>, open the <code>.dmg</code>, and drag Ollama to your Applications folder. On first launch it will prompt you to install the CLI tools — accept this. You should see the Ollama llama icon appear in your menu bar.</p>
+
+  <p>Alternatively, install via Homebrew if you prefer to keep everything CLI-managed:</p>
 
   <pre><code>brew install ollama</code></pre>
 
-  <p>Or download the macOS app directly from <code>ollama.com</code>, which installs the CLI alongside a menu-bar daemon. Either method is fine; the CLI is what matters for this guide.</p>
+  <p>Either way, confirm the daemon is running and the API is reachable:</p>
 
-  <p>Start the Ollama daemon and confirm it's running:</p>
-
-  <pre><code>ollama serve &amp;
-curl http://localhost:11434/api/tags</code></pre>
+  <pre><code>curl http://localhost:11434/api/tags</code></pre>
 
   <p>
     You should get a JSON response with an empty <code>models</code> array — correct, since we haven't registered anything yet. That comes in Phase 04.
@@ -613,6 +614,29 @@ curl http://localhost:11434/api/tags</code></pre>
 
   <div class="warning">
     <p>Ollama listens on port 11434 by default. If something else owns that port, set <code>OLLAMA_HOST=127.0.0.1:11435</code> (or any free port) before starting the daemon. You'll need to tell GitHub Copilot about the non-default address in its Ollama settings.</p>
+  </div>
+
+  <h3>4. VS Code &amp; the GitHub Copilot Extension</h3>
+
+  <p>
+    The Specr agent config in Phase 05 is a GitHub Copilot agent manifest, which means you need VS Code with the Copilot extension installed to run it. If you don't have VS Code yet, download it from <code>code.visualstudio.com</code> and install it in the usual way.
+  </p>
+
+  <p>Then install the GitHub Copilot extension from the VS Code marketplace. The quickest path is directly from the terminal:</p>
+
+  <pre><code>code --install-extension GitHub.copilot
+code --install-extension GitHub.copilot-chat</code></pre>
+
+  <p>Or open VS Code, hit <code>Cmd+Shift+X</code>, search for <strong>GitHub Copilot</strong>, and install both <em>GitHub Copilot</em> and <em>GitHub Copilot Chat</em>. You'll need a GitHub account with an active Copilot subscription — sign in when prompted.</p>
+
+  <p>Once installed, enable local model support by adding the following to your VS Code <code>settings.json</code> (<code>Cmd+Shift+P</code> → <em>Open User Settings JSON</em>):</p>
+
+  <pre><code>"github.copilot.advanced": {
+  "ollamaModels": true
+}</code></pre>
+
+  <div class="intel">
+    <p>This setting tells Copilot to enumerate models from your local Ollama instance and make them selectable alongside cloud models. Without it, the <code>bonsai-27b:latest (ollama-models)</code> reference in the Specr manifest won't resolve.</p>
   </div>
 
   <!-- ══ STEP 1 ══ -->
@@ -642,6 +666,15 @@ source ~/.zshrc</code></pre>
 
   <div class="intel">
     <p>You only need to do this once. Every new terminal session will pick up the exports automatically. If you use <code>~/.bashrc</code> or <code>~/.profile</code> instead of <code>~/.zshrc</code>, adjust accordingly.</p>
+  </div>
+
+  <div class="warning">
+    <p><strong>Alternate path — if the env vars aren't working:</strong> Some versions of the <code>hf</code> CLI vendor their own SSL context and ignore <code>REQUESTS_CA_BUNDLE</code> and <code>SSL_CERT_FILE</code> entirely. If you're still getting <code>CERTIFICATE_VERIFY_FAILED</code> after setting those vars, try this instead:</p>
+    <pre><code>pip install pip-system-certs</code></pre>
+    <p>This patches Python to pull from the OS trust store directly, which already includes the Netskope CA. If you go this route, <strong>unset the two env vars</strong> — they conflict with the system store approach:</p>
+    <pre><code>unset REQUESTS_CA_BUNDLE
+unset SSL_CERT_FILE</code></pre>
+    <p>And remove them from your <code>~/.zshrc</code> if you added them. The two approaches are mutually exclusive — pick one.</p>
   </div>
 
   <!-- ══ STEP 2 ══ -->
